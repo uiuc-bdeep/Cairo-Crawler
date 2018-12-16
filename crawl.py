@@ -1,6 +1,8 @@
 import requests
+import os
 import json, ast
 from pymongo import MongoClient
+import utils
 
 def login_api(api_info):
     url = api_info["login"]
@@ -10,13 +12,23 @@ def login_api(api_info):
 
     return ast.literal_eval(json.dumps(r.json()))
 
-def get_routes(url, token, objectID, startDate, endDate):
-    client = MongoClient(os.environ["DB_PORT_27017_TCP_ADDR"], 27017)
+def get_objectIDs(url, token):
+    r = requests.get(url.format(token))
+    objects = r.json()["data"]["objects"]
+    objectIDs = []
+
+    for obj in objects:
+        objectIDs.append(obj["objectId"])
+
+    return objectIDs
+
+def get_routes(url, token, objectID, start_date, end_date):
+    #client = MongoClient(os.environ["DB_PORT_27017_TCP_ADDR"], 27017)
+    client = MongoClient()
     db = client.cairo_crawler
-    cc_device_routes, cc_device_list = db.device_routes, db.device_dist
+    routes, dists = db.device_routes, db.device_dists
+    url = url.format(token, objectID, start_date, end_date)
 
-    url = url.format(token, objectID, startDate, endDate)
-
-    r = requests.get(url)
-
-    cc_device_routes.insert(r.json())
+    r = requests.get(url).json()
+    r["objectID"] = objectID
+    routes.insert(r)
