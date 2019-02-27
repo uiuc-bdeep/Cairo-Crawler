@@ -19,16 +19,19 @@ def get_objectIDs(url, token):
 
     for obj in objects:
         objectIDs.append(obj["objectId"])
+	
 
+    print(objectIDs)
     return objectIDs
 
 def get_routes(url, token, objectID, start_date, end_date):
     #client = MongoClient(os.environ["DB_PORT_27017_TCP_ADDR"], 27017)
-    client = MongoClient()
-    db = client.cairo_crawler
-    routes, dists = db.device_routes, db.device_dists
+    #client = MongoClient()
+    #db = client.cairo_crawler ## change this in order to change the DB place
+    #routes, dists = db.device_writer, db.device_dists
+    #routes.drop()
     url = url.format(token, objectID, start_date, end_date)
-
+    with open("log.txt", "a+") as log:
+        log.write("ObjectID: " + str(objectID) + " | startDate: " + str(start_date) + " | endDate: " + str(end_date) + "\n")
     r = requests.get(url).json()
-    r["objectID"] = objectID
-    routes.insert(r)
+    #routes.insert(r)
