@@ -10,7 +10,7 @@ import pytz
 import MySQLdb
 #from datetime import datetime
 
-def insertTrip(db, phoneNumber, distance, startDate, duration, avgSpeed, moved, maxSpeed, routesID):
+def insertTripSQL(db, phoneNumber, distance, startDate, duration, avgSpeed, moved, maxSpeed, routesID):
     cur = db.cursor()
     if(maxSpeed is None): 
         maxSpeed = 0
@@ -22,7 +22,7 @@ def insertTrip(db, phoneNumber, distance, startDate, duration, avgSpeed, moved, 
         db.rollback()
     	print("FAILED INSERTING TRIP")
 
-def insertRoute(db, routesID, latitude, longitude, endDate, speed):
+def insertRouteSQL(db, routesID, latitude, longitude, endDate, speed):
     cur = db.cursor()
     command = "INSERT INTO Routes(routesID, latitude, longitude, endDate, readableDate, speed) VALUES(" + str(routesID) + ", " + str(latitude) + ", " + str(longitude) + ", " + str(endDate) + ", \"" + readableTime(endDate) + "\", " + str(speed) + ");"
     cur.execute(command)
@@ -33,8 +33,20 @@ def insertRoute(db, routesID, latitude, longitude, endDate, speed):
        db.rollback()
        print("FAILED INSERTING ROUTE")
 
+def insertTripCSV(filename, phoneNumber, distance, startDate, duration, avgSpeed, moved, maxSpeed, routesID):
+	with open("csv_data/trips/trips-" + filename + ".csv", "a+") as csv_file:
+		writer = csv.writer(csv_file, delimiter=",")
+		row = [phoneNumber, str(distance), str(startDate), readableTime(startDate), str(duration), str(avgSpeed), str(moved), str(maxSpeed), str(routesID)]
+		writer.writerow(row)
+
+def insertRouteCSV(filename, routesID, latitude, longitude, endDate, speed):
+	with open("csv_data/routes/routes-" + filename + ".csv", "a+") as csv_file:
+		writer = csv.writer(csv_file, delimiter=',')
+		row = [str(routesID), str(latitude), str(longitude), str(endDate), readableTime(endDate), str(speed)]
+		writer.writerow(row)
+
 def readableTime(start_time):
-    value = datetime.datetime.fromtimestamp(start_time,tz=pytz.timezone('Africa/Cairo'))
+    value = datetime.datetime.fromtimestamp(start_time,tz=pytz.timezone('Africa/Cairo'))#America/Chicago
     return value.strftime('%d %B %Y %H:%M:%S')
 
 def filename_from_time(date):
@@ -66,43 +78,31 @@ def write_csv(objectID, token, start_date, end_date, site, filename, db, tripID)
 		return tripID
 	print(r["data"]["phoneNumber"] + ": ROUTE VALID")
 	for route in r["data"]["routes"]:
-		insertTrip(db, r["data"]["phoneNumber"], route["distance"], route["startdate"], route["duration"], route["avgSpeed"], route["moved"], route["maxSpeed"], tripID)
-		with open("csv_data/routes/routes-" + filename + ".csv", "a+") as csv_file:
-			writer = csv.writer(csv_file, delimiter=",")
-			row = [str(r["data"]["phoneNumber"]), str(route["distance"]), str(route["startdate"]), readableTime(route["startdate"]), str(route["duration"]), str(route["avgSpeed"]), str(route["moved"]), str(route["maxSpeed"]), str(tripID)]
-			writer.writerow(row)
-			csv_file.close()
+		insertTripSQL(db, r["data"]["phoneNumber"], route["distance"], route["startdate"], route["duration"], route["avgSpeed"], route["moved"], route["maxSpeed"], tripID)
+		insertTripCSV(filename, r["data"]["phoneNumber"], route["distance"], route["startdate"], route["duration"], route["avgSpeed"], route["moved"], route["maxSpeed"], tripID)
 		for trip in route["coordinates"]:
-			insertRoute(db, tripID, trip["latitude"], trip["longitude"], trip["datetime"], trip["speed"])
-			with open("csv_data/trips/trips-" + filename + ".csv", "a+") as csv_file:
-				writer = csv.writer(csv_file, delimiter=',')
-				row = [str(tripID), str(trip["latitude"]), str(trip["longitude"]), str(trip["datetime"]), readableTime(trip["datetime"]), str(trip["speed"])]
-				writer.writerow(row)
-				csv_file.close()
+			insertRouteSQL(db, tripID, trip["latitude"], trip["longitude"], trip["datetime"], trip["speed"])
+			insertRouteCSV(filename, tripID, trip["latitude"], trip["longitude"], trip["datetime"], trip["speed"])
 			tripID += 1
 	return tripID
 
 def write_header(filename):
-	with open("csv_data/routes/routes-" + filename + ".csv", "w") as csv_file:
+	with open("csv_data/trips/trips-" + filename + ".csv", "w") as csv_file:
 		writer = csv.writer(csv_file, delimiter=',')
 		header_row = ['phoneNumber', 'distance', 'startDate', 'startDateReadable', 'duration', 'avgSpeed', 'moved', 'maxSpeed', 'routesID']
 		writer.writerow(header_row)
-		csv_file.close()
-	with open("csv_data/trips/trips-" + filename + ".csv", "w") as csv_file:
+	with open("csv_data/routes/routes-" + filename + ".csv", "w") as csv_file:
 	        writer = csv.writer(csv_file, delimiter=',')
 		header_row = ['routesID', 'latitude', 'longitude', 'endDate', 'endDateReadable', 'speed']
 		writer.writerow(header_row)
-		csv_file.close()
 	with open("csv_data/dist_totals/totals-" + filename + ".csv", "w") as csv_file:
 	        writer = csv.writer(csv_file, delimiter=',')
 		header_row = ['phoneNumber', 'date', 'distance']
 		writer.writerow(header_row)
-		csv_file.close()
 	with open("csv_data/null_phones/phones-" + filename + ".csv", "w") as number_file:
 		writer = csv.writer(number_file, delimiter= ',')
 		header_row = ['phoneNumber', 'crawl_start_time', 'crawl_end_time']
 		writer.writerow(header_row)
-		number_file.close()
 
 def main():
     #while True:
